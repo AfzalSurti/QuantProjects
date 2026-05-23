@@ -177,3 +177,45 @@ for i in range(1, len(df)):
 
 print(f"\nSimulation complete")
 print(f"Total trades: {len(trade_log)}")
+
+# ============================================================
+# STEP 3 — ANALYZE RESULTS
+# ============================================================
+
+trades_df = pd.DataFrame(trade_log)
+
+if len(trades_df) == 0:
+    print("No trades were made — check signal")
+else:
+    # Separate buys and sells
+    sells = trades_df[trades_df['action'] == 'SELL']
+    buys  = trades_df[trades_df['action'] == 'BUY']
+    
+    print("\n=== TRADE SUMMARY ===")
+    print(f"Total trades (round trips): {len(sells)}")
+    print(f"Final capital:  ${trades_df['capital'].iloc[-1]:,.2f}")
+    print(f"Starting capital: ${CAPITAL:,.2f}")
+    print(f"Total profit:   ${trades_df['capital'].iloc[-1] - CAPITAL:,.2f}")
+    print(f"Total return:   {((trades_df['capital'].iloc[-1] / CAPITAL) - 1) * 100:.1f}%")
+    
+    # Exit reason breakdown
+    print("\n=== EXIT REASONS ===")
+    print(sells['reason'].value_counts())
+    
+    # Win/loss analysis
+    winning_trades = sells[sells['profit'] > 0]
+    losing_trades  = sells[sells['profit'] < 0]
+    
+    print("\n=== WIN/LOSS ANALYSIS ===")
+    print(f"Winning trades: {len(winning_trades)} ({len(winning_trades)/len(sells)*100:.1f}%)")
+    print(f"Losing trades:  {len(losing_trades)} ({len(losing_trades)/len(sells)*100:.1f}%)")
+    print(f"Average win:    ${winning_trades['profit'].mean():,.2f}")
+    print(f"Average loss:   ${losing_trades['profit'].mean():,.2f}")
+    
+    if len(losing_trades) > 0:
+        rr = abs(winning_trades['profit'].mean() / losing_trades['profit'].mean())
+        print(f"Risk/reward:    {rr:.2f}:1")
+    
+    # Show last 10 trades
+    print("\n=== LAST 10 TRADES ===")
+    print(trades_df.tail(10).to_string())
