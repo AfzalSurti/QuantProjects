@@ -51,3 +51,45 @@ print(df['RSI'].describe())
 print(f"\nDays RSI > 70 (overbought): {(df['RSI'] > 70).sum()}")
 print(f"Days RSI < 30 (oversold):   {(df['RSI'] < 30).sum()}")
 print(f"Days RSI 50-70 (sweet spot): {((df['RSI'] >= 50) & (df['RSI'] <= 70)).sum()}")
+
+
+# STEP 2 — Build All Indicators
+# 
+
+# Trend indicators
+df['SMA20'] = df['Close'].rolling(window=20).mean()
+df['SMA50'] = df['Close'].rolling(window=50).mean()
+
+# Volume indicator
+df['Volume_SMA20'] = df['Volume'].rolling(window=20).mean()
+df['Volume_Ratio'] = df['Volume'] / df['Volume_SMA20']
+
+# 
+# STEP 3 — Three Condition Signal
+
+
+df['Signal'] = 0
+
+# Define each condition separately — easier to read and debug
+condition_trend  = df['SMA20'] > df['SMA50']
+condition_volume = df['Volume_Ratio'] > 1.0
+condition_rsi    = (df['RSI'] >= 50) & (df['RSI'] <= 70)
+
+# All three must be true simultaneously
+buy_condition = condition_trend & condition_volume & condition_rsi
+
+df.loc[buy_condition, 'Signal'] = 1
+
+# Sell condition — trend down + volume confirmed
+sell_condition = (df['SMA20'] < df['SMA50']) & condition_volume
+df.loc[sell_condition, 'Signal'] = -1
+
+print("\n=== SIGNAL DISTRIBUTION ===")
+print(df['Signal'].value_counts())
+
+# How often each condition was true individually
+print("\n=== CONDITION BREAKDOWN ===")
+print(f"Trend up (SMA20>SMA50):     {condition_trend.sum()} days")
+print(f"High volume:                {condition_volume.sum()} days")
+print(f"RSI in sweet spot (50-70):  {condition_rsi.sum()} days")
+print(f"ALL THREE true (BUY signal): {buy_condition.sum()} days")
