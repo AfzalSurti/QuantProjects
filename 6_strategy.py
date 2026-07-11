@@ -219,3 +219,111 @@ else:
     # Show last 10 trades
     print("\n=== LAST 10 TRADES ===")
     print(trades_df.tail(10).to_string())
+
+# ============================================================
+# STEP 4 — TRACK CAPITAL OVER TIME
+# ============================================================
+
+# Build daily capital curve
+capital_curve = []
+current_cap   = CAPITAL
+
+for i in range(len(df)):
+    date  = df.index[i]
+    price = df['Close'].iloc[i]
+    
+    # Find if there was a trade on this date
+    day_trades = trades_df[trades_df['date'] == date] if len(trades_df) > 0 else pd.DataFrame()
+    
+    if len(day_trades) > 0:
+        current_cap = day_trades['capital'].iloc[-1]
+    
+    # If holding position — mark to market
+    # (what is portfolio worth RIGHT NOW)
+    if position > 0 and entry_price > 0:
+        unrealized = position * price
+        total_value = current_cap + unrealized
+    else:
+        total_value = current_cap
+    
+    capital_curve.append({
+        'date'  : date,
+        'value' : total_value
+    })
+
+curve_df = pd.DataFrame(capital_curve).set_index('date')
+
+# Buy and hold comparison
+df['BuyHold'] = CAPITAL * (df['Close'] / df['Close'].iloc[0])
+
+print("\n=== CAPITAL CURVE ===")
+print(f"Start:  ${curve_df['value'].iloc[0]:,.2f}")
+print(f"End:    ${curve_df['value'].iloc[-1]:,.2f}")
+print(f"Max:    ${curve_df['value'].max():,.2f}")
+print(f"Min:    ${curve_df['value'].min():,.2f}")
+
+# ============================================================
+# STEP 5 — VISUALIZE STRATEGY PERFORMANCE
+# ============================================================
+
+fig, axes = plt.subplots(3, 1, figsize=(14, 12))
+fig.suptitle(f'{TICKER} — Strategy Performance vs Buy & Hold', fontsize=14)
+
+# Chart 1: Capital curve vs buy and hold
+axes[0].plot(curve_df.index, curve_df['value'],
+             color='green', linewidth=2, label='Our Strategy')
+axes[0].plot(df.index, df['BuyHold'],
+             color='blue', linewidth=1.5,
+             alpha=0.7, label='Buy & Hold')
+axes[0].axhline(y=CAPITAL, color='gray',
+                linewidth=1, linestyle='--', label='Starting capital')
+axes[0].set_title('Portfolio Value Over Time')
+axes[0].set_ylabel('Portfolio Value ($)')
+axes[0].legend()
+axes[0].grid(True, alpha=0.3)
+
+# Chart 2: Individual trade profits
+if len(trades_df) > 0:
+    sells = trades_df[trades_df['action'] == 'SELL']
+    colors = ['green' if p > 0 else 'red' for p in sells['profit']]
+    axes[1].bar(range(len(sells)), sells['profit'],
+                color=colors, alpha=0.7)
+    axes[1].axhline(y=0, color='black', linewidth=1)
+    axes[1].set_title('Individual Trade Profits ($)')
+    axes[1].set_ylabel('Profit per Trade ($)')
+    axes[1].set_xlabel('Trade Number')
+    axes[1].grid(True, alpha=0.3)
+
+# Chart 3: Price with buy/sell markers
+axes[2].plot(df.index, df['Close'],
+             color='blue', linewidth=1, alpha=0.6, label='Price')
+
+if len(trades_df) > 0:
+    buy_trades  = trades_df[trades_df['action'] == 'BUY']
+    sell_trades = trades_df[trades_df['action'] == 'SELL']
+    
+    # Plot buy markers
+    for _, trade in buy_trades.iterrows():
+        if trade['date'] in df.index:
+            axes[2].scatter(trade['date'], trade['price'],
+                          color='green', marker='^',
+                          s=100, zorder=5)
+    
+    # Plot sell markers
+    for _, trade in sell_trades.iterrows():
+        if trade['date'] in df.index:
+            color = 'red' if trade['profit'] < 0 else 'lime'
+            axes[2].scatter(trade['date'], trade['price'],
+                          color=color, marker='v',
+                          s=100, zorder=5)
+
+axes[2].set_title('Price Chart with Trade Entries (▲) and Exits (▼)')
+axes[2].set_ylabel('Price ($)')
+axes[2].grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('data/strategy_performance.png', dpi=150)
+plt.close()
+
+print("\nChart saved to data/strategy_performance.png")
+print("\n=== PHASE 3 COMPLETE ===")
