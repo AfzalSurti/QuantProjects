@@ -48,7 +48,7 @@ condition_rsi    = (df['RSI'] >= 50) & (df['RSI'] <= 70)
 df['Signal'] = 0
 df.loc[condition_trend & condition_volume & condition_rsi, 'Signal'] = 1
 df.loc[(df['SMA20'] < df['SMA50']) & condition_volume, 'Signal'] = -1
-
+     
 print(f"Signal rebuilt — BUY: {(df['Signal']==1).sum()} days, SELL: {(df['Signal']==-1).sum()} days")
 
 
