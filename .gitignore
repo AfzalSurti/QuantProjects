@@ -1,0 +1,8 @@
+# Ignore the local environment variables file in this folder
+.env
+
+# Highly recommended: Ignore any other local variations of it
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
